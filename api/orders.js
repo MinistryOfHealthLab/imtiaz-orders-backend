@@ -1,33 +1,29 @@
-import { MongoClient, ObjectId } from 'mongodb';
-
-const MONGODB_URI = 'mongodb+srv://ministeroffice_db_user:jThwNNSU9yJtEe7L@m0freecluster.a5hduvj.mongodb.net/?appName=M0FreeCluster';
-const DB_NAME = 'imtiaz_orders_db';
-const COLLECTION_NAME = 'orders';
-
-async function connectDB() {
-  const client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  return client.db(DB_NAME).collection(COLLECTION_NAME);
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const orders = await connectDB();
+    const { MongoClient } = await import('mongodb');
+    const client = new MongoClient(process.env.MONGODB_URI);
+    await client.connect();
     
-    if (req.method === 'GET') {
-      const data = await orders.find({}).toArray();
-      return res.status(200).json({ success: true, count: data.length, data });
-    }
+    const db = client.db('imtiaz_orders_db');
+    const collection = db.collection('orders');
+    const data = await collection.find({}).toArray();
     
+    await client.close();
+    return res.status(200).json({ success: true, count: data.length, data });
   } catch (error) {
+    console.error('Error:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
